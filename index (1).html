@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dhaka Tourist Spots Status - May Day & Friday</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 350px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-stone-50 text-stone-800 font-sans antialiased min-h-screen">
+
+<!-- Chosen Palette: Warm Neutrals with Status Accents (Stone, Emerald, Rose) -->
+<!-- Application Structure Plan: A dashboard layout prioritized for immediate situational awareness. The top section provides context (the date and holiday clash). The middle section offers a visual summary (Donut chart) of operating statuses to quickly convey how many places are affected. The lower section provides an interactive, filterable directory of specific locations, allowing users to find open places instantly. This structure moves the user from high-level understanding to specific, actionable data. -->
+<!-- Visualization & Content Choices: 
+1. Goal: Inform about general status -> Viz: Donut Chart -> Interaction: Hover tooltips -> Justification: Quickly shows the ratio of open vs closed sites due to the holiday. -> Library: Chart.js.
+2. Goal: Organize specific place data -> Viz: Filterable Grid Cards -> Interaction: Click filters (Open/Closed/All) -> Justification: Allows users to immediately narrow down their options for the day without scrolling through irrelevant closed locations. -> Method: Vanilla JS DOM manipulation and Tailwind CSS.
+-->
+<!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+<div class="max-w-6xl mx-auto px-4 py-8">
+    
+    <header class="mb-10 text-center md:text-left border-b border-stone-200 pb-6">
+        <div class="inline-block bg-rose-100 text-rose-800 px-3 py-1 rounded-full text-sm font-semibold tracking-wide mb-3 uppercase">
+            Special Alert: May Day + Friday
+        </div>
+        <h1 class="text-4xl md:text-5xl font-extrabold text-stone-900 tracking-tight mb-4">Dhaka City Access Guide</h1>
+        <p class="text-lg text-stone-600 max-w-3xl leading-relaxed">
+            Today is <strong class="text-stone-800">Friday, May 1, 2026</strong>. Because it is <strong>International Workers' Day (May Day)</strong>—a gazetted government holiday—combined with the standard Friday weekend, operating hours for tourist destinations in Dhaka are severely impacted. Most government-run historical sites and museums are closed, while open-air parks and private venues generally remain open.
+        </p>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-stone-100 flex flex-col items-center justify-center lg:col-span-1">
+            <h2 class="text-xl font-bold text-stone-800 mb-2 w-full text-center">Status Overview</h2>
+            <p class="text-sm text-stone-500 mb-4 text-center">Proportion of major spots open vs. closed today.</p>
+            <div class="chart-container">
+                <canvas id="statusChart"></canvas>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-stone-100 lg:col-span-2 flex flex-col justify-center">
+            <h2 class="text-2xl font-bold text-stone-800 mb-4">Strategic Advice for Today</h2>
+            <div class="space-y-4">
+                <div class="flex items-start">
+                    <span class="text-2xl mr-3">🛑</span>
+                    <div>
+                        <h3 class="font-bold text-stone-900">Avoid Government Heritage Sites</h3>
+                        <p class="text-stone-600">Locations like Lalbagh Fort, Ahsan Manzil, and the National Museum adhere strictly to public holiday closures.</p>
+                    </div>
+                </div>
+                <div class="flex items-start">
+                    <span class="text-2xl mr-3">🌳</span>
+                    <div>
+                        <h3 class="font-bold text-stone-900">Embrace Open Spaces</h3>
+                        <p class="text-stone-600">Public parks (Suhrawardy Udyan, Ramna Park) and large outdoor areas (Hatirjheel) are your best bets. Expect larger crowds than usual.</p>
+                    </div>
+                </div>
+                <div class="flex items-start">
+                    <span class="text-2xl mr-3">🦁</span>
+                    <div>
+                        <h3 class="font-bold text-stone-900">Parks & Zoo are Open</h3>
+                        <p class="text-stone-600">The National Zoo and Botanical Garden typically remain open on public holidays to accommodate the high volume of local visitors.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section>
+        <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+            <div>
+                <h2 class="text-3xl font-bold text-stone-900">Directory of Locations</h2>
+                <p class="text-stone-600 mt-1">Live status for Friday, May 1st.</p>
+            </div>
+            <div class="flex bg-stone-200 p-1 rounded-lg">
+                <button id="btn-all" class="filter-btn active bg-white shadow-sm text-stone-800 px-4 py-2 rounded-md text-sm font-medium transition-colors">All Places</button>
+                <button id="btn-open" class="filter-btn text-stone-600 hover:text-stone-800 px-4 py-2 rounded-md text-sm font-medium transition-colors">Open</button>
+                <button id="btn-closed" class="filter-btn text-stone-600 hover:text-stone-800 px-4 py-2 rounded-md text-sm font-medium transition-colors">Closed</button>
+            </div>
+        </div>
+
+        <div id="places-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        </div>
+    </section>
+
+</div>
+
+<script>
+    const placesData = [
+        { name: 'Bangladesh National Museum', category: 'Museum', status: 'Closed', normalHours: 'Friday: 3:30 PM - 7:30 PM', reason: 'Government museums observe public holidays.' },
+        { name: 'Lalbagh Fort', category: 'Historical Site', status: 'Closed', normalHours: 'Friday: 2:30 PM - 6:00 PM', reason: 'Archaeological sites are closed on May Day.' },
+        { name: 'Ahsan Manzil', category: 'Historical Site', status: 'Closed', normalHours: 'Friday: 3:30 PM - 7:30 PM', reason: 'Operates as a national museum branch; closed today.' },
+        { name: 'National Zoo (Mirpur)', category: 'Wildlife/Park', status: 'Open', normalHours: 'Friday: 9:00 AM - 6:00 PM', reason: 'Remains open to accommodate holiday crowds.' },
+        { name: 'National Botanical Garden', category: 'Nature/Park', status: 'Open', normalHours: 'Friday: 9:00 AM - 5:00 PM', reason: 'Open daily, unaffected by May Day.' },
+        { name: 'Hatirjheel', category: 'Public Space', status: 'Open', normalHours: '24/7 Access', reason: 'Public thoroughfare and open space.' },
+        { name: 'Suhrawardy Udyan', category: 'Public Park', status: 'Open', normalHours: 'Daylight hours', reason: 'Open public park.' },
+        { name: 'Fantasy Kingdom', category: 'Amusement Park', status: 'Open', normalHours: 'Friday: 10:00 AM - 8:00 PM', reason: 'Private commercial venues remain open.' },
+        { name: 'Bangabandhu Military Museum', category: 'Museum', status: 'Closed', normalHours: 'Friday: 3:00 PM - 6:00 PM', reason: 'Closed on national public holidays.' },
+        { name: 'Ramna Park', category: 'Public Park', status: 'Open', normalHours: 'Daylight hours', reason: 'Open public park.' },
+        { name: 'Sonargaon Folk Art Museum', category: 'Museum', status: 'Closed', normalHours: 'Friday: 9:00 AM - 5:00 PM', reason: 'Typically closed on public holidays like May Day.' },
+        { name: 'Diabari (Uttara)', category: 'Public Space', status: 'Open', normalHours: '24/7 Access', reason: 'Open recreational area.' }
+    ];
+
+    const placesGrid = document.getElementById('places-grid');
+    const filterBtns = document.querySelectorAll('.filter-btn');
+
+    function renderPlaces(filter = 'All') {
+        placesGrid.innerHTML = '';
+        
+        const filteredData = placesData.filter(place => {
+            if (filter === 'All') return true;
+            return place.status === filter;
+        });
+
+        if (filteredData.length === 0) {
+            placesGrid.innerHTML = `<p class="col-span-full text-center text-stone-500 py-10">No places found for this filter.</p>`;
+            return;
+        }
+
+        filteredData.forEach(place => {
+            const isClosed = place.status === 'Closed';
+            const statusBg = isClosed ? 'bg-rose-100 text-rose-800 border-rose-200' : 'bg-emerald-100 text-emerald-800 border-emerald-200';
+            const dotColor = isClosed ? 'bg-rose-500' : 'bg-emerald-500';
+
+            const cardHTML = `
+                <div class="bg-white rounded-xl p-5 shadow-sm border border-stone-200 hover:shadow-md transition-shadow duration-200 flex flex-col h-full">
+                    <div class="flex justify-between items-start mb-3">
+                        <span class="text-xs font-semibold uppercase tracking-wider text-stone-500">${place.category}</span>
+                        <div class="px-2.5 py-1 rounded-md text-xs font-bold border ${statusBg} flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 rounded-full ${dotColor}"></span>
+                            ${place.status}
+                        </div>
+                    </div>
+                    <h3 class="text-lg font-bold text-stone-900 mb-1">${place.name}</h3>
+                    <p class="text-sm text-stone-500 mb-4 font-mono bg-stone-50 p-2 rounded">${place.normalHours}</p>
+                    <div class="mt-auto pt-4 border-t border-stone-100">
+                        <p class="text-sm text-stone-600 leading-snug"><strong>Note:</strong> ${place.reason}</p>
+                    </div>
+                </div>
+            `;
+            placesGrid.insertAdjacentHTML('beforeend', cardHTML);
+        });
+    }
+
+    function handleFilterClick(e) {
+        filterBtns.forEach(btn => {
+            btn.classList.remove('bg-white', 'shadow-sm', 'text-stone-800');
+            btn.classList.add('text-stone-600');
+        });
+        
+        const clickedBtn = e.target;
+        clickedBtn.classList.remove('text-stone-600');
+        clickedBtn.classList.add('bg-white', 'shadow-sm', 'text-stone-800');
+
+        let filterValue = 'All';
+        if (clickedBtn.id === 'btn-open') filterValue = 'Open';
+        if (clickedBtn.id === 'btn-closed') filterValue = 'Closed';
+
+        renderPlaces(filterValue);
+    }
+
+    filterBtns.forEach(btn => btn.addEventListener('click', handleFilterClick));
+
+    function initChart() {
+        const openCount = placesData.filter(p => p.status === 'Open').length;
+        const closedCount = placesData.filter(p => p.status === 'Closed').length;
+
+        const ctx = document.getElementById('statusChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Open (Parks, Spaces)', 'Closed (Govt Sites)'],
+                datasets: [{
+                    data: [openCount, closedCount],
+                    backgroundColor: [
+                        '#10b981', 
+                        '#f43f5e'  
+                    ],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            font: { family: "'Inter', sans-serif" },
+                            usePointStyle: true,
+                            padding: 20
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(28, 25, 23, 0.9)',
+                        padding: 12,
+                        cornerRadius: 8,
+                        titleFont: { size: 14 },
+                        bodyFont: { size: 13 }
+                    }
+                }
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        renderPlaces();
+        initChart();
+    });
+
+</script>
+</body>
+</html>
